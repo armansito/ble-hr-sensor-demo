@@ -30,6 +30,7 @@ function selectService(service) {
   heartRateService = service;
   heartRateMeasurementCharacteristic = undefined;
   bodySensorLocationCharacteristic = undefined;
+  totalEnergyExpanded = undefined;
   if (!service) {
     console.log('No service selected.');
     return;
@@ -163,7 +164,7 @@ function updateHeartRateMeasurementValue() {
   }
 
   if (rrBit == 1) {
-    if (valueBytes.length != nextByte + 2) {
+    if (valueBytes.length < nextByte + 2) {
       console.log('Invalid value for "RR-Interval"');
       return;
     }
@@ -291,19 +292,18 @@ function updateDeviceSelector() {
   var placeHolder = document.getElementById('placeholder');
   var addresses = Object.keys(heartRateDevicesMap);
 
+  deviceSelector.innerHTML = '';
+  placeHolder.innerHTML = '';
+  deviceSelector.appendChild(placeHolder);
+
   // Clear the drop-down menu.
   if (addresses.length == 0) {
     console.log('No heart rate devices found');
-    deviceSelector.innerHTML = '';
-    placeHolder.innerHTML = '';
     placeHolder.appendChild(document.createTextNode('No connected devices'));
-    placeHolder.hidden = false;
-    deviceSelector.appendChild(placeHolder);
     return;
   }
 
   // Hide the placeholder and populate
-  placeHolder.innerHTML = '';
   placeHolder.appendChild(document.createTextNode('Connected devices found'));
 
   for (var i = 0; i < addresses.length; i++) {
@@ -395,7 +395,6 @@ function main() {
     });
   };
 
-  // TODO: set up service and characteristic events.
   // Track GATT services as they are added.
   chrome.bluetoothLowEnergy.onServiceAdded.addListener(function (service) {
     // Ignore, if the service is not a Heart Rate service.
