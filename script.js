@@ -1,9 +1,13 @@
 // GATT Heart Rate Service UUIDs
-var HEART_RATE_SERVICE_UUID = '0000180d-0000-1000-8000-00805f9b34fb'
+var HEART_RATE_SERVICE_UUID            = '0000180d-0000-1000-8000-00805f9b34fb';
+var HEART_RATE_MEASUREMENT_CHRC_UUID   = '00002a37-0000-1000-8000-00805f9b34fb';
+var BODY_SENSOR_LOCATION_CHRC_UUID     = '00002a38-0000-1000-8000-00805f9b34fb';
+var HEART_RATE_CONTROL_POINT_CHRC_UUID = '00002a39-0000-1000-8000-00805f9b34fb';
 
 // The currently displayed service and characteristics.
 var heartRateService;
 var heartRateMeasurementCharacteristic;
+var totalEnergyExpanded;
 
 // A mapping from device addresses to device names for found devices that expose
 // a Heart Rate service.
@@ -20,7 +24,10 @@ function selectService(service) {
   document.getElementById('no-devices-error').hidden = !!service;
   document.getElementById('heart-rate-fields').hidden = !service;
 
+  clearAllFields();
+
   heartRateService = service;
+  heartRateMeasurementCharacteristic = undefined;
   if (!service) {
     console.log('No service selected.');
     return;
@@ -28,7 +35,177 @@ function selectService(service) {
 
   console.log('GATT service selected: ' + service.instanceId);
 
-  // TODO: get characteristics.
+  // Get the characteristics of the selected service.
+  chrome.bluetoothLowEnergy.getCharacteristics(service.instanceId,
+                                               function (chrcs) {
+    if (chrome.runtime.lastError) {
+      console.log(chrome.runtime.lastError.message);
+      return;
+    }
+
+    // Make sure that the same service is still selected.
+    if (service.instanceId != heartRateService.instanceId)
+      return;
+
+    if (chrcs.length == 0) {
+      console.log('Service has no characteristics: ' + service.instanceId);
+      return;
+    }
+
+    chrcs.forEach(function (chrc) {
+      if (chrc.uuid == HEART_RATE_MEASUREMENT_CHRC_UUID) {
+        console.log('Setting Heart Rate Measurement Characteristic: ' +
+                    chrc.instanceId);
+        heartRateMeasurementCharacteristic = chrc;
+        updateHeartRateMeasurementValue();
+        return;
+      }
+    });
+  });
+}
+
+/**
+ * Updates the Heart Rate Measurement fields based on the value of the currently
+ * selected Heart Rate Measurement Characteristic.
+ */
+function updateHeartRateMeasurementValue() {
+  if (!heartRateMeasurementCharacteristic) {
+    console.log('No Heart Rate Measurement Characteristic selected');
+    return;
+  }
+
+  // The Heart Rate Measurement Characteristic does not allow 'read' operations
+  // and its value can only be obtained via notifications, so the |value| field
+  // might be undefined here.
+  if (!heartRateMeasurementCharacteristic.value) {
+    console.log('No Heart Rate Measurement value received yet');
+    return;
+  }
+
+  var valueBytes = new Uint8Array(heartRateMeasurementCharacteristic.value);
+  if (valueBytes < 2) {
+    console.log('Invalid Heart Rate Measurement value');
+    return;
+  }
+
+  // The first byte is the flags field.
+  var flags = valueBytes[0];
+
+  // The least significant bit is the Heart Rate Value format. If 0, the heart
+  // rate measurement is expressed in the next byte of the value. If 1, it is a
+  // 16 bit value expressed in the next two bytes of the value.
+  var hrFormat = flags & 0x01;
+
+  // The next two bits is the Sensor Contact Status.
+  var sensorContactStatus = (flags >> 1) & 0x03;
+
+  // The next bit is the Energy Expanded Status. If 1, the Energy Expanded field
+  // is present in the characteristic value.
+  var eeStatus = (flags >> 3) & 0x01;
+
+  // The next bit is the RR-Interval bit. If 1, RR-Interval values are present.
+  var rrBit = (flags >> 4) & 0x01;
+
+  var heartRateMeasurement;
+  var energyExpanded;
+  var rrInterval;
+  var minLength = hrFormat == 1 ? 3 : 2;
+  if (valueBytes.length < minLength) {
+    console.log('Invalid Heart Rate Measurement value');
+    return;
+  }
+
+  if (hrFormat == 0) {
+    console.log('8-bit Heart Rate format');
+    heartRateMeasurement = valueBytes[1];
+  } else {
+    console.log('16-bit Heart Rate format');
+    heartRateMeasurement = valueBytes[1] | (valueBytes[2] << 8);
+  }
+
+  var nextByte = minLength;
+  if (eeStatus == 1) {
+    if (valueBytes.length < nextByte + 2) {
+      console.log('Invalid value for "Energy Expanded"');
+      return;
+    }
+
+    console.log('Energy Expanded field present');
+    energyExpanded = valueBytes[nextByte] | (valueBytes[nextByte + 1] << 8);
+    nextByte += 2;
+  }
+
+  if (rrBit == 1) {
+    if (valueBytes.length != nextByte + 2) {
+      console.log('Invalid value for "RR-Interval"');
+      return;
+    }
+
+    console.log('RR-Interval field present');
+
+    // Note: According to the specification, there can be several RR-Interval
+    // values in a characteristic value, however we're just picking the first
+    // one here for demo purposes.
+    rrInterval = valueBytes[nextByte] | (valueBytes[nextByte + 1] << 8);
+  }
+
+  setHeartRateMeasurement(heartRateMeasurement);
+  setSensorContactStatus((function() {
+    switch (sensorContactStatus) {
+    case 0:
+    case 1:
+      return 'not supported';
+    case 2:
+      return 'contact not detected';
+    case 3:
+      return 'contact detected';
+    default:
+      return;
+    }
+  })());
+
+  if (energyExpanded !== undefined)
+      totalEnergyExpanded = energyExpanded;
+
+  setEnergyExpanded(totalEnergyExpanded);
+  setRRInterval(rrInterval);
+}
+
+/**
+ * Helper functions to set the values of Heart Rate UI fields.
+ */
+function setFieldValue(id, value) {
+  var div = document.getElementById(id);
+  div.innerHTML = '';
+  div.appendChild(document.createTextNode((value === undefined) ? '-' : value));
+}
+
+function setHeartRateMeasurement(value) {
+  setFieldValue('heart-rate-measurement', value);
+}
+
+function setSensorContactStatus(value) {
+  setFieldValue('sensor-contact-status', value);
+}
+
+function setEnergyExpanded(value) {
+  setFieldValue('energy-expanded', value);
+}
+
+function setRRInterval(value) {
+  setFieldValue('rr-interval', value);
+}
+
+function setBodySensorLocation(value) {
+  setFieldValue('body-sensor-location', value);
+}
+
+function clearAllFields() {
+  setHeartRateMeasurement(undefined);
+  setSensorContactStatus(undefined);
+  setEnergyExpanded(undefined);
+  setRRInterval(undefined);
+  setBodySensorLocation(undefined);
 }
 
 /**
@@ -232,6 +409,20 @@ function main() {
 
     // Reselect the service to force an updated.
     selectService(service);
+  });
+
+  // Track GATT characteristic value changes. This event will be triggered after
+  // successful characteristic value reads and received notifications and
+  // indications.
+  chrome.bluetoothLowEnergy.onCharacteristicValueChanged.addListener(
+      function (chrc) {
+    if (heartRateMeasurementCharacteristic &&
+        chrc.instanceId == heartRateMeasurementCharacteristic.instanceId) {
+      console.log('Heart Rate Measurement value changed');
+      heartRateMeasurementCharacteristic = chrc;
+      updateHeartRateMeasurementValue();
+      return;
+    }
   });
 }
 
