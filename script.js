@@ -9,6 +9,7 @@ var heartRateService;
 var heartRateMeasurementCharacteristic;
 var totalEnergyExpanded;
 var bodySensorLocationCharacteristic;
+var heartRateControlPointCharacteristic;
 
 // A mapping from device addresses to device names for found devices that expose
 // a Heart Rate service.
@@ -30,6 +31,7 @@ function selectService(service) {
   heartRateService = service;
   heartRateMeasurementCharacteristic = undefined;
   bodySensorLocationCharacteristic = undefined;
+  heartRateControlPointCharacteristic = undefined;
   totalEnergyExpanded = undefined;
   if (!service) {
     console.log('No service selected.');
@@ -86,6 +88,14 @@ function selectService(service) {
           updateBodySensorLocationValue();
         });
 
+        return;
+      }
+
+      if (chrc.uuid == HEART_RATE_CONTROL_POINT_CHRC_UUID) {
+        console.log('Setting Heart Rate Control Point Characteristic: ' +
+                    chrc.instanceId);
+        heartRateControlPointCharacteristic = chrc;
+        setResetButtonVisible(true);
         return;
       }
     });
@@ -248,6 +258,33 @@ function updateBodySensorLocationValue() {
 }
 
 /**
+ * Resets the Energy Expanded field by writing to the Heart Rate Control Point
+ * characteristic.
+ */
+function resetEnergyExpanded() {
+  if (!heartRateControlPointCharacteristic) {
+    console.log('No Heart Rate Control Point characteristic selected');
+    return;
+  }
+
+  var writeValue = new ArrayBuffer(1);
+  var writeBytes = new Uint8Array(writeValue);
+  writeBytes[0] = 1;  // '1' indicates a 'reset' command.
+
+  chrome.bluetoothLowEnergy.writeCharacteristicValue(
+      heartRateControlPointCharacteristic.instanceId,
+      writeValue,
+      function () {
+    if (chrome.runtime.lastError) {
+      console.log(chrome.runtime.lastError.message);
+      return;
+    }
+
+    console.log('Heart Rate Control Point Characteristic written!');
+  });
+}
+
+/**
  * Helper functions to set the values of Heart Rate UI fields.
  */
 function setFieldValue(id, value) {
@@ -276,12 +313,17 @@ function setBodySensorLocation(value) {
   setFieldValue('body-sensor-location', value);
 }
 
+function setResetButtonVisible(visible) {
+  document.getElementById('heart-rate-control-point').hidden = !visible;
+}
+
 function clearAllFields() {
   setHeartRateMeasurement(undefined);
   setSensorContactStatus(undefined);
   setEnergyExpanded(undefined);
   setRRInterval(undefined);
   setBodySensorLocation(undefined);
+  setResetButtonVisible(false);
 }
 
 /**
@@ -394,6 +436,10 @@ function main() {
       selectService(foundService);
     });
   };
+
+  // Set up the "Reset Energy Expanded" button action.
+  document.getElementById('heart-rate-control-point').onclick =
+      resetEnergyExpanded;
 
   // Track GATT services as they are added.
   chrome.bluetoothLowEnergy.onServiceAdded.addListener(function (service) {
