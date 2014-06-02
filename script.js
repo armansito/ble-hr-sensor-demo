@@ -8,6 +8,7 @@ var HEART_RATE_CONTROL_POINT_CHRC_UUID = '00002a39-0000-1000-8000-00805f9b34fb';
 var heartRateService;
 var heartRateMeasurementCharacteristic;
 var totalEnergyExpanded;
+var bodySensorLocationCharacteristic;
 
 // A mapping from device addresses to device names for found devices that expose
 // a Heart Rate service.
@@ -28,6 +29,7 @@ function selectService(service) {
 
   heartRateService = service;
   heartRateMeasurementCharacteristic = undefined;
+  bodySensorLocationCharacteristic = undefined;
   if (!service) {
     console.log('No service selected.');
     return;
@@ -60,13 +62,38 @@ function selectService(service) {
         updateHeartRateMeasurementValue();
         return;
       }
+
+      if (chrc.uuid == BODY_SENSOR_LOCATION_CHRC_UUID) {
+        console.log('Setting Body Sensor Location Characteristic: ' +
+                    chrc.instanceId);
+        bodySensorLocationCharacteristic = chrc;
+
+        // Read the value of the characteristic once and store it.
+        chrome.bluetoothLowEnergy.readCharacteristicValue(chrc.instanceId,
+                                                          function (readChrc) {
+          if (chrome.runtime.lastError) {
+            console.log(chrome.runtime.lastError.message);
+            return;
+          }
+
+          // Make sure that the same characteristic is still selected.
+          if (readChrc.instanceId !=
+              bodySensorLocationCharacteristic.instanceId)
+            return;
+
+          bodySensorLocationCharacteristic = readChrc;
+          updateBodySensorLocationValue();
+        });
+
+        return;
+      }
     });
   });
 }
 
 /**
  * Updates the Heart Rate Measurement fields based on the value of the currently
- * selected Heart Rate Measurement Characteristic.
+ * selected Heart Rate Measurement characteristic.
  */
 function updateHeartRateMeasurementValue() {
   if (!heartRateMeasurementCharacteristic) {
@@ -83,7 +110,7 @@ function updateHeartRateMeasurementValue() {
   }
 
   var valueBytes = new Uint8Array(heartRateMeasurementCharacteristic.value);
-  if (valueBytes < 2) {
+  if (valueBytes.length < 2) {
     console.log('Invalid Heart Rate Measurement value');
     return;
   }
@@ -169,6 +196,54 @@ function updateHeartRateMeasurementValue() {
 
   setEnergyExpanded(totalEnergyExpanded);
   setRRInterval(rrInterval);
+}
+
+/**
+ * Updates the Body Sensor Location field based on the value of the currently
+ * selected Body Sensor Location characteristic.
+ */
+function updateBodySensorLocationValue() {
+  if (!bodySensorLocationCharacteristic) {
+    console.log('No Body Sensor Location Characteristic selected');
+    return;
+  }
+
+  // Since this function is called after a read request, the value should be
+  // present if the read was successful but it will be undefined if the read
+  // failed, so check here.
+  if (!bodySensorLocationCharacteristic.value) {
+    console.log('No Body Sensor Location has been read');
+    return;
+  }
+
+  var valueBytes = new Uint8Array(bodySensorLocationCharacteristic.value);
+  if (valueBytes.length != 1) {
+    console.log('Invalid Body Sensor Location value');
+    return;
+  }
+
+  var bodySensorLocation = (function () {
+    switch (valueBytes[0]) {
+    case 0:
+      return 'Other';
+    case 1:
+      return 'Chest';
+    case 2:
+      return 'Wrist';
+    case 3:
+      return 'Finger';
+    case 4:
+      return 'Hand';
+    case 5:
+      return 'Ear Lobe';
+    case 6:
+      return 'Foot';
+    default:
+      return;
+    }
+  })();
+
+  setBodySensorLocation(bodySensorLocation);
 }
 
 /**
@@ -348,7 +423,6 @@ function main() {
 
   // Track GATT services as they are removed.
   chrome.bluetoothLowEnergy.onServiceRemoved.addListener(function (service) {
-    console.log('foo');
     // Ignore, if the service is not a Heart Rate service.
     if (service.uuid != HEART_RATE_SERVICE_UUID)
       return;
