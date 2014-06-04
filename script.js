@@ -24,7 +24,7 @@ function selectService(service) {
   // Hide or show the appropriate elements based on whether or not
   // |serviceId| is undefined.
   document.getElementById('no-devices-error').hidden = !!service;
-  document.getElementById('heart-rate-fields').hidden = !service;
+  document.getElementById('heart-rate-info-div').hidden = !service;
 
   clearAllFields();
 
@@ -95,7 +95,7 @@ function selectService(service) {
         console.log('Setting Heart Rate Control Point Characteristic: ' +
                     chrc.instanceId);
         heartRateControlPointCharacteristic = chrc;
-        setResetButtonVisible(true);
+        setResetButtonEnabled(true);
         return;
       }
     });
@@ -313,8 +313,8 @@ function setBodySensorLocation(value) {
   setFieldValue('body-sensor-location', value);
 }
 
-function setResetButtonVisible(visible) {
-  document.getElementById('heart-rate-control-point').hidden = !visible;
+function setResetButtonEnabled(enabled) {
+  document.getElementById('heart-rate-control-point').disabled = !enabled;
 }
 
 function clearAllFields() {
@@ -323,7 +323,7 @@ function clearAllFields() {
   setEnergyExpanded(undefined);
   setRRInterval(undefined);
   setBodySensorLocation(undefined);
-  setResetButtonVisible(false);
+  setResetButtonEnabled(false);
 }
 
 /**

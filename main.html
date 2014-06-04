@@ -28,23 +28,26 @@
   <div id="no-devices-error">
     No Heart Rate device selected
   </div>
-  <div id="heart-rate-fields">
-    <div class="heart-rate-field">
-      Heart Rate: <span id="heart-rate-measurement">-</span> bpm
+  <div id="heart-rate-info-div">
+    <div id="heart-rate-bpm">
+      <div id="pulse" class="heartbeat-animation"></div>
+      <span id="heart-rate-measurement">-</span>
     </div>
-    <div class="heart-rate-field">
-      Sensor Contact Status: <span id ="sensor-contact-status">-</span>
+    <div id="heart-rate-fields">
+      <div class="heart-rate-field">
+        Sensor Contact Status: <span id="sensor-contact-status">-</span>
+      </div>
+      <div class="heart-rate-field">
+        Energy Expanded: <span id="energy-expanded">-</span> kJ
+      </div>
+      <div class="heart-rate-field">
+        RR-Interval: <span id="rr-interval">-</span> s
+      </div>
+      <div class="heart-rate-field">
+        Body Sensor Location: <span id="body-sensor-location">-</span>
+      </div>
+      <button id="heart-rate-control-point">Reset Energy Expanded</button>
     </div>
-    <div class="heart-rate-field">
-      Energy Expanded: <span id="energy-expanded">-</span> kJ
-    </div>
-    <div class="heart-rate-field">
-      RR-Interval: <span id="rr-interval">-</span> s
-    </div>
-    <div class="heart-rate-field">
-      Body Sensor Location: <span id="body-sensor-location">-</span>
-    </div>
-    <button id="heart-rate-control-point">Reset Energy Expanded</button>
   </div>
 </body>
 </html>

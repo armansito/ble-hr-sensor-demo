@@ -56,4 +56,77 @@ hr {
 #no-devices-error {
   font-size: 10pt;
   text-align: center;
+  padding-top: 7%;
+}
+
+#heart-rate-bpm {
+  float: left;
+  height: 136px;
+  line-height: 136px;
+  width: 50%;
+  text-align: center;
+  font-size: 35px;
+  color: #df0000;
+  position: relative;
+}
+
+#pulse {
+  position: absolute;
+  background: -webkit-radial-gradient(rgb(255, 71, 0) 15%, transparent 70%);
+  border-radius: 100%;
+  box-sizing: border-box;
+  left: 27.5%;
+  width: 45%;
+  height: 100%;
+  z-index: -1;
+}
+
+.heartbeat-animation {
+  -webkit-animation-name: heartbeat;
+  -webkit-animation-duration: 1.2s;
+  -webkit-animation-timing-function: linear;
+  -webkit-animation-delay: 2s;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-animation-play-state: running;
+}
+
+@-webkit-keyframes "heartbeat" {
+ 0% {
+  -webkit-transform: scale(0);
+  opacity: 0.6;
+ }
+ 25% {
+  -webkit-transform: scale(0.5);
+  opacity: 0.7;
+ }
+ 50% {
+  -webkit-transform: scale(0.667);
+  opacity: 0.4;
+ }
+ 75% {
+  -webkit-transform: scale(0.834);
+  opacity: 0.15;
+ }
+ 100% {
+  -webkit-transform: scale(1);
+  opacity: 0.0;
+ }
+}
+
+#heart-rate-fields {
+  float: right;
+  width: 48%;
+  margin-right: 2%;
+  box-sizing: border-box;
+  padding: 10px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.65);
+}
+
+.heart-rate-field {
+  margin-bottom: 5px;
+}
+
+div.heart-rate-field span {
+  font-style: italic;
+  color: #333;
 }
