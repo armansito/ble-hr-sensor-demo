@@ -366,6 +366,21 @@ function main() {
   // Set up the UI to look like no device was initially selected.
   selectService(undefined);
 
+  // Request information about the local Bluetooth adapter to be displayed in the UI.
+  chrome.bluetooth.getAdapterState(function (adapterState) {
+    if (chrome.runtime.lastError) {
+      console.log(chrome.runtime.lastError.message);
+      return;
+    }
+
+    document.getElementById('adapter-address').appendChild(
+        document.createTextNode(adapterState.address));
+
+    var displayName = adapterState.name ? adapterState.name : 'Local Adapter';
+    document.getElementById('adapter-name').appendChild(
+        document.createTextNode(displayName));
+  });
+
   // Initialize |heartRateDevicesMap|.
   chrome.bluetooth.getDevices(function (devices) {
     if (chrome.runtime.lastError) {
