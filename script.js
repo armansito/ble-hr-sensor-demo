@@ -220,7 +220,7 @@ function updateBodySensorLocationValue() {
   }
 
   // Since this function is called after a read request, the value should be
-  // present if the read was successful but it will be undefined if the read
+  // present if the read was successful but it may be undefined if the read
   // failed, so check here.
   if (!bodySensorLocationCharacteristic.value) {
     console.log('No Body Sensor Location has been read');
@@ -474,9 +474,11 @@ function main() {
 
     // See if this is the currently selected service. If so, unselect it.
     console.log('Heart Rate service removed: ' + service.instanceId);
+    var selectedRemoved = false;
     if (heartRateService && heartRateService.instanceId == service.instanceId) {
       console.log('The selected service disappeared!');
       selectService(undefined);
+      selectedRemoved = true;
     }
 
     // Remove the associated device from the map only if it has no other Heart
@@ -514,6 +516,8 @@ function main() {
         console.log('Removing device: ' + device.address);
         delete heartRateDevicesMap[device.address];
         updateDeviceSelector();
+        if (selectedRemoved)
+          deviceSelector.onchange();  // Forcefully select the next device.
       });
     });
   });
