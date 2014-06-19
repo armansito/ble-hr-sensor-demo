@@ -28,6 +28,9 @@ function selectService(service) {
 
   clearAllFields();
 
+  if (heartRateService)
+    chrome.bluetoothLowEnergy.disconnect(heartRateService.deviceAddress);
+
   heartRateService = service;
   heartRateMeasurementCharacteristic = undefined;
   bodySensorLocationCharacteristic = undefined;
@@ -341,12 +344,12 @@ function updateDeviceSelector() {
   // Clear the drop-down menu.
   if (addresses.length == 0) {
     console.log('No heart rate devices found');
-    placeHolder.appendChild(document.createTextNode('No connected devices'));
+    placeHolder.appendChild(document.createTextNode('No HR devices found'));
     return;
   }
 
   // Hide the placeholder and populate
-  placeHolder.appendChild(document.createTextNode('Connected devices found'));
+  placeHolder.appendChild(document.createTextNode('HR devices found'));
 
   for (var i = 0; i < addresses.length; i++) {
     var address = addresses[i];
@@ -406,6 +409,16 @@ function main() {
 
     if (devices) {
       devices.forEach(function (device) {
+        if (device.uuids &&
+            device.uuids.indexOf(HEART_RATE_SERVICE_UUID) > -1) {
+          if (!heartRateDevicesMap.hasOwnProperty(device.address)) {
+            heartRateDevicesMap[device.address] =
+                (device.name ? device.name : device.address);
+            updateDeviceSelector();
+          }
+          return;
+        }
+
         // See if the device exposes a Heart Rate service.
         chrome.bluetoothLowEnergy.getServices(device.address,
                                               function (services) {
@@ -428,12 +441,13 @@ function main() {
           if (!found)
             return;
 
-          console.log('Found device with Heart Rate service: ' +
-                      device.address);
-          heartRateDevicesMap[device.address] =
-              (device.name ? device.name : device.address);
-
-          updateDeviceSelector();
+          if (!heartRateDevicesMap.hasOwnProperty(device.address)) {
+            console.log('Found device with Heart Rate service: ' +
+                        device.address);
+            heartRateDevicesMap[device.address] =
+                (device.name ? device.name : device.address);
+            updateDeviceSelector();
+          }
         });
       });
     }
@@ -449,6 +463,15 @@ function main() {
       selectService(undefined);
       return;
     }
+
+    chrome.bluetoothLowEnergy.connect(selectedValue, function () {
+      if (chrome.runtime.lastError) {
+        console.log('Failed to connect to HR device "' + selectedValue + '" ' +
+                    chrome.runtime.lastError.message);
+        return;
+      }
+      console.log('Connected to HR device: ' + selectedValue);
+    });
 
     // Request all GATT services of the selected device to see if it still has
     // a Heart Rate service and pick the first Heart Rate service to display.
@@ -473,11 +496,49 @@ function main() {
   document.getElementById('heart-rate-control-point').onclick =
       resetEnergyExpanded;
 
+  // Track devices that get added and removed. If they have the heart rate UUID
+  // in their advertisement data, then it will be available in the |uuids|
+  // field of the device.
+  chrome.bluetooth.onDeviceAdded.addListener(function (device) {
+    if (!device.uuids || device.uuids.indexOf(HEART_RATE_SERVICE_UUID) < 0)
+      return;
+
+    if (heartRateDevicesMap.hasOwnProperty(device.address))
+      return;
+
+    console.log('Found device with HR service: ' + device.address);
+
+    heartRateDevicesMap[device.address] =
+        (device.name ? device.name : device.address);
+    updateDeviceSelector();
+  });
+
+  // Track devices as they are removed.
+  chrome.bluetooth.onDeviceRemoved.addListener(function (device) {
+    if (!heartRateDevicesMap.hasOwnProperty(device.address))
+      return;
+
+    console.log('HR device removed: ' + device.address);
+    delete heartRateDevicesMap[device.address];
+    if (heartRateService && heartRateService.deviceAddress == device.address) {
+      chrome.bluetoothLowEnergy.disconnect(device.address);
+      selectService(undefined);
+      deviceSelector.onchange();
+    }
+    updateDeviceSelector();
+  });
+
   // Track GATT services as they are added.
   chrome.bluetoothLowEnergy.onServiceAdded.addListener(function (service) {
     // Ignore, if the service is not a Heart Rate service.
     if (service.uuid != HEART_RATE_SERVICE_UUID)
       return;
+
+    // If this came from the currently selected device and no service is
+    // currently selected, select this service.
+    if (deviceSelector[deviceSelector.selectedIndex].value ==
+        service.deviceAddress)
+      selectService(service);
 
     // Add the device of the service to the device map and update the UI.
     console.log('New Heart Rate service added: ' + service.instanceId);
