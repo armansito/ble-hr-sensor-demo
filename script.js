@@ -574,8 +574,8 @@ function main() {
       selectedRemoved = true;
     }
 
-    // Remove the associated device from the map only if it has no other Heart
-    // Rate services exposed.
+    // Remove the associated device from the map only if it no longer lists the
+    // Heart Rate UUID.
     if (!heartRateDevicesMap.hasOwnProperty(service.deviceAddress))
       return;
 
@@ -585,33 +585,14 @@ function main() {
         return;
       }
 
-      chrome.bluetoothLowEnergy.getServices(device.address,
-                                            function (services) {
-        if (chrome.runtime.lastError) {
-          // Error obtaining services. Remove the device from the map.
-          console.log(chrome.runtime.lastError.message);
-          delete heartRateDevicesMap[device.address];
-          updateDeviceSelector();
-          return;
-        }
-
-        var found = false;
-        for (var i = 0; i < services.length; i++) {
-          if (services[i].uuid == HEART_RATE_SERVICE_UUID) {
-            found = true;
-            break;
-          }
-        }
-
-        if (found)
-          return;
-
+      if (!device.uuids || device.uuids.indexOf(HEART_RATE_SERVICE_UUID) < 0) {
         console.log('Removing device: ' + device.address);
         delete heartRateDevicesMap[device.address];
         updateDeviceSelector();
-        if (selectedRemoved)
-          deviceSelector.onchange();  // Forcefully select the next device.
-      });
+      }
+
+      if (selectedRemoved)
+        deviceSelector.onchange();
     });
   });
 
