@@ -71,51 +71,35 @@ hr {
   width: 50%;
   text-align: center;
   font-size: 35px;
-  color: #df0000;
+  color: #ff0000;
+}
+
+#heart {
   position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  top: 5%;
+  left: -3%;
 }
 
-#pulse {
+#heart img {
   position: absolute;
-  background: -webkit-radial-gradient(rgb(255, 71, 0) 15%, transparent 70%);
-  border-radius: 100%;
-  box-sizing: border-box;
-  left: 27.5%;
-  width: 45%;
-  height: 100%;
-  z-index: -1;
+  width: 50%;
+  height: 50%;
+  top: 25%;
+  left: 25%;
 }
 
-.heartbeat-animation {
-  -webkit-animation-name: heartbeat;
-  -webkit-animation-duration: 1.2s;
-  -webkit-animation-timing-function: linear;
-  -webkit-animation-delay: 2s;
-  -webkit-animation-iteration-count: infinite;
-  -webkit-animation-play-state: running;
+.blink-animation {
+  -webkit-animation: blink 1s linear infinite;
 }
 
-@-webkit-keyframes "heartbeat" {
- 0% {
-  -webkit-transform: scale(0);
-  opacity: 0.6;
- }
- 25% {
-  -webkit-transform: scale(0.5);
-  opacity: 0.7;
- }
- 50% {
-  -webkit-transform: scale(0.667);
-  opacity: 0.4;
- }
- 75% {
-  -webkit-transform: scale(0.834);
-  opacity: 0.15;
- }
- 100% {
-  -webkit-transform: scale(1);
-  opacity: 0.0;
- }
+@-webkit-keyframes "blink" {
+  0% { opacity: 1; }
+  33% { opacity: 1; }
+  66% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 #heart-rate-fields {
