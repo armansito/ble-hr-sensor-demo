@@ -1,5 +1,5 @@
 {
-  "name": "Bluetooth Low Energy Heart Rate Service Demo",
+  "name": "Heart Rate Service Demo",
   "description": "Heart Rate Monitor Demo using chrome.bluetoothLowEnergy",
   "version": "0.1",
   "icons": {

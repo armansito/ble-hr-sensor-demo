@@ -32,6 +32,14 @@ function selectService(service) {
     chrome.bluetoothLowEnergy.disconnect(heartRateService.deviceAddress);
 
   heartRateService = service;
+
+  // Disable notifications from the currently selected Heart Rate Measurement
+  // characteristic
+  if (heartRateMeasurementCharacteristic) {
+    chrome.bluetoothLowEnergy.stopCharacteristicNotifications(
+        heartRateMeasurementCharacteristic.instanceId);
+  }
+
   heartRateMeasurementCharacteristic = undefined;
   bodySensorLocationCharacteristic = undefined;
   heartRateControlPointCharacteristic = undefined;
@@ -66,6 +74,20 @@ function selectService(service) {
                     chrc.instanceId);
         heartRateMeasurementCharacteristic = chrc;
         updateHeartRateMeasurementValue();
+
+        // Enable notifications from the characteristic.
+        chrome.bluetoothLowEnergy.startCharacteristicNotifications(
+            chrc.instanceId,
+            function () {
+          if (chrome.runtime.lastError) {
+            console.log(
+                'Failed to enable Heart Rate Measurement notifications: ' +
+                 chrome.runtime.lastError.message);
+            return;
+          }
+
+          console.log('Heart Rate Measurement notifications enabled!');
+        });
         return;
       }
 
